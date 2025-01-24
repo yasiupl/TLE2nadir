@@ -1,0 +1,1 @@
+C:/Users/mjasiukowicz/AppData/Local/anaconda3/python.exe tle2nadir_gui.py %*
