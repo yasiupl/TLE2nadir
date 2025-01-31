@@ -13,7 +13,6 @@ if not exist %VENV_DIR% (
     pip install --upgrade pip
     pip install -r requirements.txt
 ) else (
-    echo Virtual environment found. Activating...
     call %VENV_DIR%\Scripts\activate
 )
 

@@ -12,7 +12,6 @@ if [ ! -d "$VENV_DIR" ]; then
     pip install --upgrade pip
     pip install -r requirements.txt
 else
-    echo "Virtual environment found. Activating..."
     source $VENV_DIR/bin/activate
 fi
 
