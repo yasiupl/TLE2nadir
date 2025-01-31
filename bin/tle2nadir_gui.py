@@ -1,45 +1,17 @@
-import tkinter as tk
-from tkinter import ttk, filedialog, messagebox
-import numpy as np
-from datetime import datetime, timedelta, timezone
-from skyfield.api import EarthSatellite, load
 import argparse
 import requests
+import numpy as np
+import tkinter as tk
+from tkinter import filedialog, messagebox
+from datetime import datetime, timedelta, timezone
+from skyfield.api import EarthSatellite, load
+
 
 # Utility Functions
 def normalize(vector):
     """Normalize a vector."""
     return vector / np.linalg.norm(vector)
 
-def calculate_quaternion(r_sat, v_sat):
-    """Calculate quaternion for nadir-pointing satellite."""
-    # Normalize position and velocity vectors
-    r_unit = normalize(r_sat)
-    v_unit = normalize(v_sat)
-
-    # Nadir direction as the opposite of position vector
-    nadir_direction = -r_unit
-
-    # X-axis aligns with velocity vector
-    x_axis = v_unit
-
-    # Y-axis as the cross product of nadir direction (Z-axis) and X-axis
-    y_axis = normalize(np.cross(nadir_direction, x_axis))
-    
-    # Ensure Z-axis points towards nadir
-    z_axis = nadir_direction
-
-    # Rotation matrix from EME2000 to satellite body frame
-    R = np.vstack((x_axis, y_axis, z_axis)).T
-
-    # Convert rotation matrix to quaternion
-    q = np.zeros(4)
-    q[0] = np.sqrt(1.0 + R[0, 0] + R[1, 1] + R[2, 2]) / 2  # Real part
-    q[1] = (R[2, 1] - R[1, 2]) / (4 * q[0])
-    q[2] = (R[0, 2] - R[2, 0]) / (4 * q[0])
-    q[3] = (R[1, 0] - R[0, 1]) / (4 * q[0])
-
-    return q
 
 def julian_date_to_mjd(jd):
     """Convert Julian Date to Modified Julian Date."""
@@ -75,6 +47,37 @@ def parse_mjd_pair(value):
 def generate_ccsds_quaternion_data(days, seconds, quaternion):
     """Generate a CCSDS-compatible quaternion string."""
     return f"{days}\t{seconds:.6f}\t{quaternion[0]:.6f}\t{quaternion[1]:.6f}\t{quaternion[2]:.6f}\t{quaternion[3]:.6f}"
+
+# Main logic
+def calculate_quaternion(r_sat, v_sat):
+    """Calculate quaternion for nadir-pointing satellite."""
+    # Normalize position and velocity vectors
+    r_unit = normalize(r_sat)
+    v_unit = normalize(v_sat)
+
+    # Nadir direction as the opposite of position vector
+    nadir_direction = -r_unit
+
+    # X-axis aligns with velocity vector
+    x_axis = v_unit
+
+    # Y-axis as the cross product of nadir direction (Z-axis) and X-axis
+    y_axis = normalize(np.cross(nadir_direction, x_axis))
+    
+    # Ensure Z-axis points towards nadir
+    z_axis = nadir_direction
+
+    # Rotation matrix from EME2000 to satellite body frame
+    R = np.vstack((x_axis, y_axis, z_axis)).T
+
+    # Convert rotation matrix to quaternion
+    q = np.zeros(4)
+    q[0] = np.sqrt(1.0 + R[0, 0] + R[1, 1] + R[2, 2]) / 2  # Real part
+    q[1] = (R[2, 1] - R[1, 2]) / (4 * q[0])
+    q[2] = (R[0, 2] - R[2, 0]) / (4 * q[0])
+    q[3] = (R[1, 0] - R[0, 1]) / (4 * q[0])
+
+    return q
 
 def generate_quaternions_over_time(satellite, ts, start_time, end_time, interval):
     """Generate quaternion data for a given satellite over time."""
