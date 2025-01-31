@@ -4,6 +4,7 @@ import numpy as np
 from datetime import datetime, timedelta, timezone
 from skyfield.api import EarthSatellite, load
 import argparse
+import requests
 
 # Utility Functions
 def normalize(vector):
@@ -173,13 +174,9 @@ class TLE2nadirApp:
             messagebox.showerror("Error", "Please enter a valid NORAD ID.")
             return
         try:
-            url = f"https://celestrak.org/NORAD/elements/gp.php?CATNR={norad_id}"
-            tle_data = load.tle_file(url)
-            satellite = tle_data[0]
-            self.tle1.set(satellite.line1)
-            self.tle2.set(satellite.line2)
-            self.tle1_field.set(satellite.line1)
-            self.tle2_field.set(satellite.line2)
+            tle = requests.get(f"https://celestrak.org/NORAD/elements/gp.php?CATNR={norad_id}").text.split('\n')
+            self.tle1.set(tle[1])
+            self.tle2.set(tle[2])
         except Exception as e:
             messagebox.showerror("Error", f"Could not download TLE: {e}")
 
