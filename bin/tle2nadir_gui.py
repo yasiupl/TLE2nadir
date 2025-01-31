@@ -135,39 +135,41 @@ class TLE2nadirApp:
         # Satellite ID Input
         tk.Label(root, text="Satellite NORAD ID:").grid(row=0, column=0, sticky="w", padx=5, pady=5)
         self.norad_id = tk.StringVar(value=satellite_id)
-        tk.Entry(root, textvariable=self.norad_id, width=30).grid(row=0, column=1, padx=5, pady=5)
-        tk.Button(root, text="Download", command=self.download_tle).grid(row=0, column=2, padx=5, pady=5)
+        tk.Entry(root, textvariable=self.norad_id, width=10).grid(row=0, column=1, sticky="w", padx=5, pady=5)
+        self.norad_name = tk.StringVar()
+        tk.Entry(root, textvariable=self.norad_name, width=35, state="disabled").grid(row=0, column=1, sticky="e", padx=5, pady=5)
+        tk.Button(root, text="Download", command=self.download_tle).grid(row=0, column=2, sticky="w", padx=5, pady=5)
 
         # TLE Input Fields
         tk.Label(root, text="TLE data:").grid(row=1, column=0, sticky="w", padx=5, pady=5)
         self.tle1 = tk.StringVar()
         self.tle2 = tk.StringVar()
-        self.tle1_field = tk.Entry(root, textvariable=self.tle1, width=50)
-        self.tle1_field.grid(row=1, column=1, columnspan=2, padx=5, pady=2)
+        self.tle1_field = tk.Entry(root, textvariable=self.tle1, width=65)
+        self.tle1_field.grid(row=1, column=1, columnspan=2, sticky="w", padx=5, pady=2)
         self.tle1_field.bind("<<Paste>>", self.handle_tle_paste)
-        self.tle2_field = tk.Entry(root, textvariable=self.tle2, width=50)
-        self.tle2_field.grid(row=2, column=1, columnspan=2, padx=5, pady=2)
+        self.tle2_field = tk.Entry(root, textvariable=self.tle2, width=65)
+        self.tle2_field.grid(row=2, column=1, columnspan=2, sticky="w", padx=5, pady=2)
  
         # Start/End Date Inputs
         tk.Label(root, text="Start date:").grid(row=3, column=0, sticky="w", padx=5, pady=5)
         self.start_time = tk.StringVar(value=start_date)
-        tk.Entry(root, textvariable=self.start_time, width=30).grid(row=3, column=1, padx=5, pady=5)
+        tk.Entry(root, textvariable=self.start_time, width=30).grid(row=3, column=1, sticky="w", padx=5, pady=5)
 
         tk.Label(root, text="End date:").grid(row=4, column=0, sticky="w", padx=5, pady=5)
         self.end_time = tk.StringVar(value=end_date)
-        tk.Entry(root, textvariable=self.end_time, width=30).grid(row=4, column=1, padx=5, pady=5)
+        tk.Entry(root, textvariable=self.end_time, width=30).grid(row=4, column=1, sticky="w", padx=5, pady=5)
 
         # Sampling Interval
         tk.Label(root, text="Sampling interval:").grid(row=5, column=0, sticky="w", padx=5, pady=5)
         self.interval = tk.StringVar(value=sampling)
-        tk.Entry(root, textvariable=self.interval, width=10).grid(row=5, column=1, padx=5, pady=5, sticky="w")
-        tk.Label(root, text="seconds").grid(row=5, column=1, padx=5, pady=5)
+        tk.Entry(root, textvariable=self.interval, width=10).grid(row=5, column=1, sticky="w", padx=5, pady=5)
+        tk.Label(root, text="seconds").grid(row=5, column=2, sticky="w", padx=5, pady=5)
 
         # Output File Selection
         tk.Label(root, text="Output file:").grid(row=6, column=0, sticky="w", padx=5, pady=5)
         self.output_file = tk.StringVar(value=output_file)
-        tk.Entry(root, textvariable=self.output_file, width=50).grid(row=6, column=1, padx=5, pady=5)
-        tk.Button(root, text="Browse", command=self.browse_output_file).grid(row=6, column=2, padx=5, pady=5)
+        tk.Entry(root, textvariable=self.output_file, width=50).grid(row=6, column=1, sticky="w", padx=5, pady=5)
+        tk.Button(root, text="Browse", command=self.browse_output_file).grid(row=6, column=2, sticky="w", padx=5, pady=5)
 
         # Generate Button
         tk.Button(root, text="Generate", command=self.generate_quaternions, bg="green", fg="white").grid(row=7, column=1, pady=10)
@@ -203,6 +205,7 @@ class TLE2nadirApp:
             return
         try:
             tle = requests.get(f"https://celestrak.org/NORAD/elements/gp.php?CATNR={norad_id}").text.split('\n')
+            self.norad_name.set(tle[0])
             self.tle1.set(tle[1])
             self.tle2.set(tle[2])
         except Exception as e:
@@ -235,9 +238,9 @@ ORIGINATOR = VTS
 
 META_START
 
-OBJECT_NAME = {self.norad_id.get() or "UNKNOWN"}
-OBJECT_ID = UNKNOWN
-REF_FRAME_A = UNDEFINED
+OBJECT_NAME = {self.norad_name.get() or "UNKNOWN"}
+OBJECT_ID = {self.norad_id.get() or "UNKNOWN"}
+REF_FRAME_A = EME2000
 REF_FRAME_B = UNDEFINED
 ATTITUDE_DIR = A2B
 TIME_SYSTEM = UTC
