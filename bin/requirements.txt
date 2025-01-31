@@ -1,0 +1,4 @@
+numpy
+skyfield
+argparse
+requests
