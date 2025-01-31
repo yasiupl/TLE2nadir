@@ -1,12 +1,3 @@
-import argparse
-import requests
-import numpy as np
-import tkinter as tk
-from tkinter import filedialog, messagebox
-from datetime import datetime, timedelta, timezone
-from skyfield.api import EarthSatellite, load
-
-
 """
     VTS Timeloop Generator plugin generating Nadir-pointing quaternion from a satellite TLE over a given time period.
     Copyright (C) 2025  Marcin Jasiukowicz
@@ -31,6 +22,14 @@ __license__     = "GPLv3"
 __version__     = "1.0.0"
 __email__       = "contact@yasiu.pl"
 __status__      = "Production"
+
+import argparse
+import requests
+import numpy as np
+import tkinter as tk
+from tkinter import filedialog, messagebox
+from datetime import datetime, timedelta, timezone
+from skyfield.api import EarthSatellite, load
 
 # Utility Functions
 def normalize(vector):
