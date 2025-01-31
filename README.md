@@ -10,6 +10,6 @@
 
 ## Screenshots
 
-![GUI screenshot](doc/img/gui.png)
+![GUI screenshot](./doc/img/gui.png)
 
-![Visualisation](doc/img/vectors.png)
+![Visualisation](./doc/img/vectors.png)
