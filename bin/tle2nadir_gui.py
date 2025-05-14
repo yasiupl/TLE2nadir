@@ -27,6 +27,7 @@ import argparse
 import requests
 import numpy as np
 import tkinter as tk
+import os # Added for path manipulation
 from tkinter import filedialog, messagebox, ttk # Added ttk
 from datetime import datetime, timedelta, timezone
 from skyfield.api import EarthSatellite, load
@@ -74,33 +75,104 @@ def generate_ccsds_quaternion_data(days, seconds, quaternion):
 
 # Main logic
 def calculate_quaternion(r_sat, v_sat):
-    """Calculate quaternion for nadir-pointing satellite."""
-    # Normalize position and velocity vectors
-    r_unit = normalize(r_sat)
-    v_unit = normalize(v_sat)
-
-    # Nadir direction as the opposite of position vector
-    nadir_direction = -r_unit
-
-    # X-axis aligns with velocity vector
-    x_axis = v_unit
-
-    # Y-axis as the cross product of nadir direction (Z-axis) and X-axis
-    y_axis = normalize(np.cross(nadir_direction, x_axis))
+    """Calculate quaternion for nadir-pointing satellite.
     
-    # Ensure Z-axis points towards nadir
-    z_axis = nadir_direction
+    The satellite body frame is defined as:
+    - Z-axis: Points towards nadir (opposite of satellite position vector).
+    - X-axis: Aligns with the satellite's velocity vector if available and not radial.
+              If velocity is zero, not available, or purely radial, a conventional
+              X-axis is chosen (typically aligning with an inertial reference direction
+              projected onto the plane perpendicular to the Z-axis).
+    - Y-axis: Completes the right-handed system (Y = Z x X).
+    """
+    
+    # Epsilon for floating point comparisons (e.g., checking for zero vectors)
+    epsilon = 1e-9
 
-    # Rotation matrix from EME2000 to satellite body frame
-    R = np.vstack((x_axis, y_axis, z_axis)).T
+    # 1. Handle r_sat being zero (should not happen for valid orbital data)
+    norm_r = np.linalg.norm(r_sat)
+    if norm_r < epsilon:
+        # Position vector is zero, orientation is undefined. Return identity.
+        return np.array([1.0, 0.0, 0.0, 0.0])
+        
+    r_unit = r_sat / norm_r
+    z_axis_body = -r_unit  # Body Z-axis (nadir)
 
-    # Convert rotation matrix to quaternion
+    # 2. Determine Body X-axis and Y-axis
+    norm_v = np.linalg.norm(v_sat)
+    
+    use_conventional_x = False
+    if norm_v < epsilon:
+        use_conventional_x = True # Velocity is zero or not provided
+    else:
+        v_unit = v_sat / norm_v
+        # Check if velocity is radial (collinear with position)
+        if abs(np.dot(v_unit, r_unit)) > (1.0 - epsilon):
+            use_conventional_x = True # Velocity is radial
+        else:
+            # Velocity is available and not radial, use it for X-axis
+            x_axis_body = v_unit
+            
+            y_axis_body_candidate = np.cross(z_axis_body, x_axis_body)
+            norm_y_candidate = np.linalg.norm(y_axis_body_candidate)
+            if norm_y_candidate < epsilon:
+                # This case (X_body collinear with Z_body) should have been caught by radial check.
+                # Fallback to conventional X if something unexpected happens.
+                use_conventional_x = True
+            else:
+                y_axis_body = y_axis_body_candidate / norm_y_candidate
+
+    if use_conventional_x:
+        # Define X-axis conventionally when velocity is unusable.
+        # Use EME2000 Z-axis ([0,0,1], inertial North) as a primary reference.
+        ref_vector_inertial_z = np.array([0.0, 0.0, 1.0])
+        
+        x_axis_candidate = np.cross(ref_vector_inertial_z, z_axis_body)
+        
+        if np.linalg.norm(x_axis_candidate) < epsilon:
+            # z_axis_body is aligned or anti-aligned with ref_vector_inertial_z
+            # (i.e., satellite is near an inertial pole, z_body is along +/- inertial Z).
+            # Pick X_body to align with inertial X (e.g., towards Vernal Equinox).
+            x_axis_body = normalize(np.array([1.0, 0.0, 0.0])) # normalize() is safe for unit vectors
+        else:
+            x_axis_body = normalize(x_axis_candidate) # normalize() is safe here due to norm check
+            
+        y_axis_body = normalize(np.cross(z_axis_body, x_axis_body)) # Z and X are ortho-normal
+
+    # 3. Construct Rotation Matrix (Inertial to Body)
+    # Columns of R are the body axes expressed in the inertial frame.
+    R = np.array([x_axis_body, y_axis_body, z_axis_body]).T
+
+    # 4. Convert Rotation Matrix to Quaternion (scalar first: q0, q1, q2, q3)
+    # Using a robust method (Sheppard's method adapted for stability).
     q = np.zeros(4)
-    q[0] = np.sqrt(1.0 + R[0, 0] + R[1, 1] + R[2, 2]) / 2  # Real part
-    q[1] = (R[2, 1] - R[1, 2]) / (4 * q[0])
-    q[2] = (R[0, 2] - R[2, 0]) / (4 * q[0])
-    q[3] = (R[1, 0] - R[0, 1]) / (4 * q[0])
+    trace = R[0, 0] + R[1, 1] + R[2, 2]
 
+    if trace > 0.0: # Preferred case for numerical stability
+        S = np.sqrt(trace + 1.0) * 2.0
+        q[0] = 0.25 * S  # qw (scalar part)
+        q[1] = (R[2, 1] - R[1, 2]) / S  # qx
+        q[2] = (R[0, 2] - R[2, 0]) / S  # qy
+        q[3] = (R[1, 0] - R[0, 1]) / S  # qz
+    elif (R[0, 0] > R[1, 1]) and (R[0, 0] > R[2, 2]): # R[0,0] is largest diagonal element
+        S = np.sqrt(1.0 + R[0, 0] - R[1, 1] - R[2, 2]) * 2.0
+        q[0] = (R[2, 1] - R[1, 2]) / S
+        q[1] = 0.25 * S
+        q[2] = (R[0, 1] + R[1, 0]) / S
+        q[3] = (R[0, 2] + R[2, 0]) / S
+    elif R[1, 1] > R[2, 2]: # R[1,1] is largest diagonal element
+        S = np.sqrt(1.0 + R[1, 1] - R[0, 0] - R[2, 2]) * 2.0
+        q[0] = (R[0, 2] - R[2, 0]) / S
+        q[1] = (R[0, 1] + R[1, 0]) / S
+        q[2] = 0.25 * S
+        q[3] = (R[1, 2] + R[2, 1]) / S
+    else: # R[2,2] is largest diagonal element
+        S = np.sqrt(1.0 + R[2, 2] - R[0, 0] - R[1, 1]) * 2.0
+        q[0] = (R[1, 0] - R[0, 1]) / S
+        q[1] = (R[0, 2] + R[2, 0]) / S
+        q[2] = (R[1, 2] + R[2, 1]) / S
+        q[3] = 0.25 * S
+        
     return q
 
 def generate_quaternions_over_time(satellite, ts, start_time, end_time, interval):
@@ -150,15 +222,19 @@ def parse_ccsds_oem_file(file_path):
                 
                 # Data lines
                 parts = line.split()
-                if len(parts) >= 8: # Expect at least MJD_day, MJD_seconds, X, Y, Z, VX, VY, VZ
+                if len(parts) >= 5: # Expect at least MJD_day, MJD_seconds, X, Y, Z. Velocities are optional.
                     try:
-                        # OEM data lines: MJD_day MJD_seconds_of_day X Y Z VX VY VZ (velocities optional but expected here)
+                        # OEM data lines: MJD_day MJD_seconds_of_day X Y Z [VX VY VZ]
                         # The first two columns are interpreted as MJD day and seconds of that day,
                         mjd_day = int(parts[0])
                         mjd_seconds_of_day = float(parts[1])
                         
                         pos = np.array([float(parts[2]), float(parts[3]), float(parts[4])]) # Position in km
-                        vel = np.array([float(parts[5]), float(parts[6]), float(parts[7])]) # Velocity in km/s
+                        if len(parts) >= 8:
+                            vel = np.array([float(parts[5]), float(parts[6]), float(parts[7])]) # Velocity in km/s
+                        else:
+                            # Velocities are optional, defaulting to [0,0,0] if not provided
+                            vel = np.array([0.0, 0.0, 0.0])
                         state_vectors.append(((mjd_day, mjd_seconds_of_day), pos, vel))
                     except ValueError as e:
                         print(f"Skipping malformed data line: {line} - {e}")
@@ -191,9 +267,12 @@ def generate_quaternions_from_oem_vectors(oem_state_vectors):
 
 # GUI Implementation
 class TLE2nadirApp:
-    def __init__(self, root, start_date="2025-01-13 00:00:00", end_date="2025-01-20 00:00:00", sampling=60, output_file="output.txt", satellite_id=None):
+    def __init__(self, root, start_date="2025-01-13 00:00:00", end_date="2025-01-20 00:00:00", sampling=60, output_file="quaternions.txt", satellite_id=None):
         self.root = root
         self.root.title("TLE2nadir Generator")
+
+        # Store the project directory from the output file path argument
+        self.project_directory = os.path.dirname(output_file) if output_file else "."
 
         # Create Tab Control
         self.notebook = ttk.Notebook(root)
@@ -297,13 +376,13 @@ class TLE2nadirApp:
 
     def browse_output_file(self):
         """Select output file path."""
-        file_path = filedialog.asksaveasfilename(initialdir=self.browse_output_file, defaultextension=".txt", filetypes=[("Text Files", "*.txt")])
+        file_path = filedialog.asksaveasfilename(initialdir=self.project_directory, defaultextension=".txt", filetypes=[("Text Files", "*.txt")])
         if file_path:
             self.output_file.set(file_path)
 
     def browse_position_file(self):
         """Select position file path."""
-        file_path = filedialog.askopenfilename(initialdir=".", title="Select Position File", filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")])
+        file_path = filedialog.askopenfilename(initialdir=self.project_directory, title="Select Position File", filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")])
         if file_path:
             self.position_file_path.set(file_path)
 
