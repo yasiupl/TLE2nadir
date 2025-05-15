@@ -1,2 +1,4 @@
 output.txt
 *venv
+_pycache_
+*.pyc
