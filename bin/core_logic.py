@@ -276,6 +276,8 @@ def parse_ccsds_oem_file(file_path: str) -> Tuple[Dict[str, str], List[Tuple[Tup
     metadata: Dict[str, str] = {"OBJECT_NAME": "UNKNOWN", "OBJECT_ID": "UNKNOWN"}
     state_vectors: List[Tuple[Tuple[int, float], np.ndarray, np.ndarray]] = []
     parsing_metadata = True
+    velocity_missing = False  # Tracks if any data line defaults to zero velocity
+    found_cic_oem_vers = False # Tracks if CIC_OEM_VERS is found
     try:
         with open(file_path, 'r') as f:
             for line in f:
@@ -290,6 +292,8 @@ def parse_ccsds_oem_file(file_path: str) -> Tuple[Dict[str, str], List[Tuple[Tup
                             metadata["OBJECT_NAME"] = value
                         elif key == "OBJECT_ID":
                             metadata["OBJECT_ID"] = value
+                        elif key == "CIC_OEM_VERS": # CCSDS_OEM_VERS is also common, but let's stick to one for now
+                            found_cic_oem_vers = True
                     if line == "META_STOP":
                         parsing_metadata = False
                     continue
@@ -309,6 +313,7 @@ def parse_ccsds_oem_file(file_path: str) -> Tuple[Dict[str, str], List[Tuple[Tup
                         else:
                             # Velocities are optional, defaulting to [0,0,0] if not provided
                             vel = np.array([0.0, 0.0, 0.0])
+                            velocity_missing = True
                         state_vectors.append(((mjd_day, mjd_seconds_of_day), pos, vel))
                     except ValueError as e:
                         logging.warning(f"Skipping malformed data line in OEM file: {line} - {e}")
@@ -318,10 +323,17 @@ def parse_ccsds_oem_file(file_path: str) -> Tuple[Dict[str, str], List[Tuple[Tup
     except Exception as e:
         raise Exception(f"Error parsing position file: {e}")
     
+    if not found_cic_oem_vers:
+        raise Exception(f"File '{file_path}' is missing the 'CIC_OEM_VERS' field and may not be a valid CCSDS OEM file.")
+
     if not state_vectors and not parsing_metadata: # Ensure META_STOP was found if data is expected
         raise Exception("No state vectors found after META_STOP in position file, or META_STOP missing.")
     if not state_vectors and parsing_metadata: # META_STOP never found
+        # This implies META_STOP was missing, and we already checked for CIC_OEM_VERS
         raise Exception("META_STOP not found in position file.")
+
+    if velocity_missing:
+        logging.warning(f"OEM file '{file_path}' contains one or more state vectors without velocity components. These were defaulted to [0,0,0].")
 
     return metadata, state_vectors
 
