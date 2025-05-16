@@ -1,3 +1,5 @@
+![Visualisation](./doc/img/vectors.png)
+
 # TLE2nadir
 
 A [VTS Timeloop](https://timeloop.fr/vts/) [Generator plugin](https://timeloop.fr/static/doc/manual/pages/Data_generators_in_VTS/index.html) that generates nadir-pointing quaternions for a satellite over a specified time period. It can process orbital data from Two-Line Element (TLE) sets or from CCSDS Orbit Ephemeris Message (OEM) position files.
@@ -59,5 +61,3 @@ The generated attitude data is written to a CCSDS Attitude Ephemeris Message (AE
 
 ![GUI screenshot - TLE input](./doc/img/gui_tle.png)
 ![GUI screenshot - OEM input](./doc/img/gui_oem.png)
-
-![Visualisation](./doc/img/vectors.png)
