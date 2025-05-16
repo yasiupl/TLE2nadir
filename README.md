@@ -57,6 +57,7 @@ The generated attitude data is written to a CCSDS Attitude Ephemeris Message (AE
 
 ## Screenshots
 
-![GUI screenshot](./doc/img/gui.png)
+![GUI screenshot - TLE input](./doc/img/gui_tle.png)
+![GUI screenshot - OEM input](./doc/img/gui_oem.png)
 
 ![Visualisation](./doc/img/vectors.png)
