@@ -407,6 +407,7 @@ ATTITUDE_TYPE = QUATERNION
 
 META_STOP
 \n
+COMMENT Data format: MJD_days MJD_seconds_of_day q_scalar q_x q_y q_z
 """)
             for days, seconds, quaternion_data_point in data_lines:
                 f.write(_generate_ccsds_quaternion_data(days, seconds, quaternion_data_point) + '\n')
