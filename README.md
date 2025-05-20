@@ -56,8 +56,10 @@ The generated attitude data is written to a CCSDS Attitude Ephemeris Message (AE
 ## Installation instructions
 
 1. Clone/move repository into the `Generators` folder in the VTS Timeloop install directory.
+2. Use the generator under `Satellite > Position/Orientation > Orientation > File > Generators`
 
 ## Screenshots
 
 ![GUI screenshot - TLE input](./doc/img/gui_tle.png)
 ![GUI screenshot - OEM input](./doc/img/gui_oem.png)
+![GUI screenshot - Usage](./doc/img/usage.png)
