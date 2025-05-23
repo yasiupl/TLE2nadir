@@ -53,6 +53,23 @@ The generated attitude data is written to a CCSDS Attitude Ephemeris Message (AE
     `MJD_days  MJD_seconds_of_day  q_scalar  q_x  q_y  q_z`
     (Modified Julian Date day, MJD seconds of the day, and the four quaternion components).
 
+## Dependencies
+
+Python 3.6 or newer is required.
+
+The core application relies on the following Python packages:
+- numpy
+- skyfield
+- argparse
+- requests
+
+The graphical user interface (GUI) also uses `tkinter`, which is typically included with standard Python installations.
+
+You can install the required packages using pip:
+```bash
+pip install -r bin/requirements.txt
+```
+
 ## Installation instructions
 
 1. Clone/move repository into the `Generators` folder in the VTS Timeloop install directory.
