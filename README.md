@@ -72,8 +72,9 @@ pip install -r bin/requirements.txt
 
 ## Installation instructions
 
-1. Clone/move repository into the `Generators` folder in the VTS Timeloop install directory.
-2. Use the generator under `Satellite > Position/Orientation > Orientation > File > Generators`
+1. Clone or Download this repository (Click the green button "<> Code" -> Select "Download ZIP").
+2. Move the repository folder into the `Generators` folder in the VTS Timeloop install directory.
+3. Use the generator under `Satellite > Position/Orientation > Orientation > File > Generators`
 
 ## Screenshots
 
